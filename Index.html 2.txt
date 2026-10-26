@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lyric Transcriber & Generator Studio</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        studio: {
+                            bg: '#0F172A',
+                            card: '#1E293B',
+                            accent: '#6366F1',
+                            accentHover: '#4F46E5',
+                            border: '#334155'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+
+    <!-- Navigation Header -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-indigo-600 rounded-lg shadow-lg shadow-indigo-500/30">
+                    <i data-lucide="music" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg tracking-wide text-white flex items-center gap-2">
+                        Lyric Studio <span class="text-xs bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-full font-medium">AI Pro</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Audio Transcription & Lyric Generator</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <input type="password" id="apiKeyInput" placeholder="Paste Gemini API Key..." class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 w-48 sm:w-64 transition">
+                <button id="saveKeyBtn" onclick="saveApiKey()" class="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded-lg font-medium border border-slate-700 text-slate-300 transition flex items-center gap-1.5">
+                    <i data-lucide="key" class="w-3.5 h-3.5"></i> Save Key
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Column: Inputs & Studio Controls (5 cols) -->
+        <div class="lg:col-span-5 space-y-6">
+
+            <!-- Mode Selector Tabs -->
+            <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+                <button id="tabAudioMode" onclick="switchMode('audio')" class="flex-1 py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-2 bg-indigo-600 text-white shadow-md transition">
+                    <i data-lucide="mic" class="w-4 h-4"></i> Audio / Mic Mode
+                </button>
+                <button id="tabPromptMode" onclick="switchMode('prompt')" class="flex-1 py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-2 text-slate-400 hover:text-white transition">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i> Prompt Generator Mode
+                </button>
+            </div>
+
+            <!-- AUDIO INPUT SECTION -->
+            <div id="audioSection" class="glass-panel rounded-2xl p-5 space-y-4">
+                <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                    <i data-lucide="upload-cloud" class="w-4 h-4 text-indigo-400"></i> Upload Audio File or Record Live
+                </h2>
+
+                <!-- File Dropzone -->
+                <div id="dropzone" onclick="document.getElementById('audioFileInput').click()" class="border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-xl p-6 text-center cursor-pointer bg-slate-900/40 hover:bg-slate-900/80 transition group">
+                    <input type="file" id="audioFileInput" accept="audio/*" class="hidden" onchange="handleFileSelect(event)">
+                    <div class="w-12 h-12 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-3 text-indigo-400 group-hover:scale-110 transition">
+                        <i data-lucide="file-audio" class="w-6 h-6"></i>
+                    </div>
+                    <p id="fileNameDisplay" class="text-xs font-medium text-slate-300">Click to upload MP3, WAV, M4A, AAC</p>
+                    <p class="text-[10px] text-slate-500 mt-1">Maximum file size: 25MB</p>
+                </div>
+
+                <!-- Live Recorder -->
+                <div class="flex items-center justify-between bg-slate-900 p-3 rounded-xl border border-slate-800">
+                    <div class="flex items-center space-x-3">
+                        <button id="recBtn" onclick="toggleRecord()" class="w-9 h-9 bg-rose-600 hover:bg-rose-500 text-white rounded-full flex items-center justify-center transition shadow-lg shadow-rose-600/30">
+                            <i id="recIcon" data-lucide="mic" class="w-4 h-4"></i>
+                        </button>
+                        <div>
+                            <p class="text-xs font-medium text-slate-200" id="recStatus">Microphone Ready</p>
+                            <p class="text-[10px] text-slate-400" id="recTimer">00:00</p>
+                        </div>
+                    </div>
+                    <span id="recordingBadge" class="hidden text-[10px] bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded-full border border-rose-500/30 font-medium animate-pulse">Recording</span>
+                </div>
+
+                <!-- Audio Preview Player -->
+                <audio id="audioPlayer" controls class="w-full hidden h-8 rounded-lg mt-2"></audio>
+
+                <button onclick="processAudioTranscription()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30">
+                    <i data-lucide="wand-2" class="w-4 h-4"></i> Transcribe Audio to Lyrics
+                </button>
+            </div>
+
+            <!-- PROMPT GENERATOR SECTION -->
+            <div id="promptSection" class="glass-panel rounded-2xl p-5 space-y-4 hidden">
+                <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                    <i data-lucide="wand2" class="w-4 h-4 text-indigo-400"></i> Prompt-Based Lyric Studio
+                </h2>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Song Topic, Story or Specific Track Request</label>
+                    <textarea id="promptInput" rows="3" placeholder="e.g., Write an upbeat Pop song about heartbreak and moving on to new beginnings, in the style of Dua Lipa..." class="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 transition resize-none"></textarea>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">Genre</label>
+                        <select id="genreSelect" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                            <option value="Pop">Pop</option>
+                            <option value="Hip Hop / Rap">Hip Hop / Rap</option>
+                            <option value="R&B / Soul">R&B / Soul</option>
+                            <option value="Rock">Rock</option>
+                            <option value="Afrobeats">Afrobeats</option>
+                            <option value="Acoustic / Folk">Acoustic / Folk</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">Mood</label>
+                        <select id="moodSelect" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                            <option value="Energetic">Energetic</option>
+                            <option value="Melancholic">Melancholic</option>
+                            <option value="Romantic">Romantic</option>
+                            <option value="Inspirational">Inspirational</option>
+                            <option value="Dark / Aggressive">Dark</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">Structure</label>
+                        <select id="structureSelect" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                            <option value="Standard (Verse-Chorus-Verse-Chorus-Bridge-Chorus)">Standard</option>
+                            <option value="Short Track (Verse-Chorus-Verse-Outro)">Short</option>
+                            <option value="Extended Studio Version">Extended</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button onclick="processPromptGeneration()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i> Generate Song Lyrics
+                </button>
+            </div>
+
+            <!-- SONG ANALYSIS STUDIO (AI RHYS & THEMES) -->
+            <div class="glass-panel rounded-2xl p-5 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                        <i data-lucide="bar-chart-2" class="w-4 h-4 text-emerald-400"></i> AI Song Analysis Studio
+                    </h2>
+                    <button onclick="analyzeLyrics()" class="text-[11px] bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border border-emerald-500/30 px-2.5 py-1 rounded-lg transition font-medium">
+                        Analyze Active Lyrics
+                    </button>
+                </div>
+
+                <div id="analysisOutput" class="bg-slate-900/60 rounded-xl p-3 text-xs text-slate-400 min-h-[100px] flex items-center justify-center border border-slate-800">
+                    Click "Analyze Active Lyrics" to extract rhyme schemes, structural meter, themes, and emotional cadence.
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Interactive Lyric Editor & Export (7 cols) -->
+        <div class="lg:col-span-7 flex flex-col space-y-4">
+
+            <!-- Toolbar & Controls -->
+            <div class="glass-panel rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                        <i data-lucide="file-text" class="w-4 h-4 text-indigo-400"></i> Lyrics Workspace
+                    </span>
+                    <span id="lineCountBadge" class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-md font-mono">0 lines</span>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <!-- Text-to-Speech Cadence Preview -->
+                    <button onclick="playTTSSpeech()" class="bg-slate-800 hover:bg-slate-700 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700 text-slate-300 transition flex items-center gap-1" title="Preview Cadence Audio">
+                        <i data-lucide="volume-2" class="w-3.5 h-3.5 text-indigo-400"></i> Listen
+                    </button>
+
+                    <!-- Translate Dropdown -->
+                    <select id="translateLang" onchange="translateLyrics()" class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-2 py-1.5 text-slate-300 focus:outline-none">
+                        <option value="">Translate To...</option>
+                        <option value="Spanish">Spanish</option>
+                        <option value="French">French</option>
+                        <option value="German">German</option>
+                        <option value="Yoruba">Yoruba</option>
+                        <option value="Japanese">Japanese</option>
+                        <option value="Korean">Korean</option>
+                    </select>
+
+                    <!-- Export Dropdown -->
+                    <div class="relative inline-block text-left">
+                        <button onclick="toggleExportMenu()" class="bg-indigo-600 hover:bg-indigo-500 text-xs px-3 py-1.5 rounded-lg font-medium text-white transition flex items-center gap-1.5 shadow">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i> Export <i data-lucide="chevron-down" class="w-3 h-3"></i>
+                        </button>
+                        <div id="exportMenu" class="hidden absolute right-0 mt-2 w-36 bg-slate-900 border border-slate-800 rounded-xl shadow-xl z-20 py-1">
+                            <button onclick="exportLyrics('txt')" class="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2">
+                                <i data-lucide="file-text" class="w-3.5 h-3.5"></i> Text (.txt)
+                            </button>
+                            <button onclick="exportLyrics('lrc')" class="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2">
+                                <i data-lucide="clock" class="w-3.5 h-3.5"></i> Synced (.lrc)
+                            </button>
+                            <button onclick="exportLyrics('srt')" class="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2">
+                                <i data-lucide="subtitles" class="w-3.5 h-3.5"></i> Subtitle (.srt)
+                            </button>
+                            <button onclick="exportLyrics('json')" class="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2">
+                                <i data-lucide="code" class="w-3.5 h-3.5"></i> Data (.json)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Editor Area -->
+            <div class="glass-panel rounded-2xl p-4 flex-1 flex flex-col min-h-[450px]">
+                <textarea id="lyricEditor" oninput="updateStats()" placeholder="Transcribed or generated lyrics will appear here automatically with section tags [Verse], [Chorus], [Bridge]... 
+
+You can also write or edit directly in this workspace!" class="w-full flex-1 bg-slate-950/50 border border-slate-800 rounded-xl p-4 text-sm font-mono text-slate-200 focus:outline-none focus:border-indigo-500/50 leading-relaxed resize-none"></textarea>
+
+                <!-- Footer Stats -->
+                <div class="flex items-center justify-between text-[11px] text-slate-500 pt-3 border-t border-slate-800/80 mt-3">
+                    <span id="wordCount">0 words | 0 characters</span>
+                    <span id="syllableAvg">Avg Syllables/Line: 0</span>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- App Logic & API Scripts -->
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        // State Variables
+        let apiKey = localStorage.getItem('gemini_api_key') || '';
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let currentAudioBlob = null;
+        let timerInterval = null;
+        let secondsRecorded = 0;
+
+        if (apiKey) {
+            document.getElementById('apiKeyInput').value = apiKey;
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('apiKeyInput').value.trim();
+            if (key) {
+                localStorage.setItem('gemini_api_key', key);
+                apiKey = key;
+                alert('API Key saved successfully!');
+            } else {
+                localStorage.removeItem('gemini_api_key');
+                apiKey = '';
+                alert('API Key cleared.');
+            }
+        }
+
+        // Mode Switching
+        function switchMode(mode) {
+            const audioSec = document.getElementById('audioSection');
+            const promptSec = document.getElementById('promptSection');
+            const tabAudio = document.getElementById('tabAudioMode');
+            const tabPrompt = document.getElementById('tabPromptMode');
+
+            if (mode === 'audio') {
+                audioSec.classList.remove('hidden');
+                promptSec.classList.add('hidden');
+                tabAudio.className = "flex-1 py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-2 bg-indigo-600 text-white shadow-md transition";
+                tabPrompt.className = "flex-1 py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-2 text-slate-400 hover:text-white transition";
+            } else {
+                promptSec.classList.remove('hidden');
+                audioSec.classList.add('hidden');
+                tabPrompt.className = "flex-1 py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-2 bg-indigo-600 text-white shadow-md transition";
+                tabAudio.className = "flex-1 py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-2 text-slate-400 hover:text-white transition";
+            }
+        }
+
+        // File Selection
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                document.getElementById('fileNameDisplay').innerText = file.name;
+                currentAudioBlob = file;
+                const url = URL.createObjectURL(file);
+                const player = document.getElementById('audioPlayer');
+                player.src = url;
+                player.classList.remove('hidden');
+            }
+        }
+
+        // Live Audio Recording
+        async function toggleRecord() {
+            if (!isRecording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        currentAudioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+                        const url = URL.createObjectURL(currentAudioBlob);
+                        const player = document.getElementById('audioPlayer');
+                        player.src = url;
+                        player.classList.remove('hidden');
+                        document.getElementById('fileNameDisplay').innerText = "Recorded_Audio.mp3";
+                    };
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    document.getElementById('recBtn').className = "w-9 h-9 bg-amber-600 hover:bg-amber-500 text-white rounded-full flex items-center justify-center transition shadow-lg";
+                    document.getElementById('recStatus').innerText = "Recording Live...";
+                    document.getElementById('recordingBadge').classList.remove('hidden');
+
+                    secondsRecorded = 0;
+                    timerInterval = setInterval(() => {
+                        secondsRecorded++;
+                        const mins = String(Math.floor(secondsRecorded / 60)).padStart(2, '0');
+                        const secs = String(secondsRecorded % 60).padStart(2, '0');
+                        document.getElementById('recTimer').innerText = `${mins}:${secs}`;
+                    }, 1000);
+
+                } catch (err) {
+                    alert("Microphone access denied or not supported.");
+                }
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                clearInterval(timerInterval);
+                document.getElementById('recBtn').className = "w-9 h-9 bg-rose-600 hover:bg-rose-500 text-white rounded-full flex items-center justify-center transition shadow-lg shadow-rose-600/30";
+                document.getElementById('recStatus').innerText = "Microphone Ready";
+                document.getElementById('recordingBadge').classList.add('hidden');
+            }
+        }
+
+        // Transcribe Audio via Gemini API
+        async function processAudioTranscription() {
+            if (!apiKey) return alert("Please enter and save your Gemini API Key first.");
+            if (!currentAudioBlob) return alert("Please select or record an audio file first.");
+
+            const editor = document.getElementById('lyricEditor');
+            editor.value = "Transcribing audio using Gemini AI... Please wait...";
+
+            const reader = new FileReader();
+            reader.readAsDataURL(currentAudioBlob);
+            reader.onloadend = async () => {
+                const base64Audio = reader.result.split(',')[1];
+                const mimeType = currentAudioBlob.type || 'audio/mp3';
+
+                const payload = {
+                    contents: [{
+                        parts: [
+                            { text: "Listen to this audio track carefully and transcribe the song lyrics accurately. Structure the output into standard song sections (e.g. [Intro], [Verse 1], [Chorus], [Bridge], [Outro]). Include timing tags if discernible. Do not include commentary, just the formatted lyrics." },
+                            {
+                                inline_data: {
+                                    mime_type: mimeType,
+                                    data: base64Audio
+                                }
+                            }
+                        ]
+                    }]
+                };
+
+                try {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const data = await response.json();
+                    if (data.candidates && data.candidates[0].content.parts[0].text) {
+                        editor.value = data.candidates[0].content.parts[0].text;
+                        updateStats();
+                    } else {
+                        editor.value = "Error: Could not transcribe audio. " + JSON.stringify(data);
+                    }
+                } catch (e) {
+                    editor.value = "Transcription Error: " + e.message;
+                }
+            };
+        }
+
+        // Prompt-Based Lyric Generation via Gemini API
+        async function processPromptGeneration() {
+            if (!apiKey) return alert("Please enter and save your Gemini API Key first.");
+            const promptText = document.getElementById('promptInput').value.trim();
+            if (!promptText) return alert("Please enter a prompt or song description.");
+
+            const genre = document.getElementById('genreSelect').value;
+            const mood = document.getElementById('moodSelect').value;
+            const structure = document.getElementById('structureSelect').value;
+
+            const editor = document.getElementById('lyricEditor');
+            editor.value = "Generating custom song lyrics based on your prompt... Please wait...";
+
+            const systemPrompt = `You are an expert hit songwriter and lyricist. Write song lyrics based on the user's request:
+- User Prompt: "${promptText}"
+- Genre: ${genre}
+- Mood/Vibe: ${mood}
+- Structure Type: ${structure}
+
+Format requirement: Clear stanza markers like [Verse 1], [Chorus], [Bridge], [Outro]. Provide punchy, rhythmic, rhyming, and expressive lyrics. Return only the song lyrics without conversational filler.`;
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt }] }] })
+                });
+
+                const data = await response.json();
+                if (data.candidates && data.candidates[0].content.parts[0].text) {
+                    editor.value = data.candidates[0].content.parts[0].text;
+                    updateStats();
+                } else {
+                    editor.value = "Error generating lyrics: " + JSON.stringify(data);
+                }
+            } catch (e) {
+                editor.value = "Generation Error: " + e.message;
+            }
+        }
+
+        // Lyrics Translation
+        async function translateLyrics() {
+            const lang = document.getElementById('translateLang').value;
+            const editor = document.getElementById('lyricEditor');
+            if (!lang || !editor.value.trim()) return;
+
+            if (!apiKey) return alert("Please enter and save your Gemini API Key.");
+
+            const currentText = editor.value;
+            editor.value = `Translating lyrics into ${lang}... Please wait...`;
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: `Translate the following song lyrics accurately into ${lang}, preserving section tags like [Verse], [Chorus] and maintaining musical rhythm where possible:\n\n${currentText}`
+                            }]
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                if (data.candidates && data.candidates[0].content.parts[0].text) {
+                    editor.value = data.candidates[0].content.parts[0].text;
+                    updateStats();
+                } else {
+                    editor.value = currentText;
+                }
+            } catch (e) {
+                alert("Translation failed: " + e.message);
+                editor.value = currentText;
+            }
+        }
+
+        // Song Analysis Studio
+        async function analyzeLyrics() {
+            const text = document.getElementById('lyricEditor').value.trim();
+            if (!text) return alert("No lyrics found in workspace to analyze.");
+            if (!apiKey) return alert("Please enter and save your Gemini API Key.");
+
+            const outputDiv = document.getElementById('analysisOutput');
+            outputDiv.innerHTML = '<span class="animate-pulse flex items-center gap-2"><i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Analyzing song cadence & theme...</span>';
+            lucide.createIcons();
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: `Analyze the following song lyrics and provide a brief bulleted breakdown containing:
+1. Rhyme Scheme & Pattern
+2. Estimated Rhythm / Meter (BPM feel)
+3. Main Thematic Meaning & Key Emotion
+4. Standout Metaphors or Lines
+
+Lyrics:
+${text}`
+                            }]
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                if (data.candidates && data.candidates[0].content.parts[0].text) {
+                    outputDiv.innerHTML = `<div class="prose prose-invert text-xs space-y-1">${data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>')}</div>`;
+                }
+            } catch (e) {
+                outputDiv.innerText = "Analysis Error: " + e.message;
+            }
+        }
+
+        // Text-to-Speech Cadence Preview
+        function playTTSSpeech() {
+            const text = document.getElementById('lyricEditor').value.trim();
+            if (!text) return alert("No lyrics to preview.");
+
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 0.95;
+            utterance.pitch = 1.0;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Stats Counter
+        function updateStats() {
+            const text = document.getElementById('lyricEditor').value;
+            const lines = text.split('\n').filter(l => l.trim().length > 0);
+            const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+            const chars = text.length;
+
+            document.getElementById('lineCountBadge').innerText = `${lines.length} lines`;
+            document.getElementById('wordCount').innerText = `${words} words | ${chars} characters`;
+
+            // Simple syllable estimate
+            let totalSyllables = 0;
+            lines.forEach(line => {
+                const wList = line.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/);
+                wList.forEach(w => {
+                    if (w.length <= 3) totalSyllables += 1;
+                    else totalSyllables += (w.match(/[aeiouy]{1,2}/g) || []).length;
+                });
+            });
+
+            const avg = lines.length ? Math.round(totalSyllables / lines.length) : 0;
+            document.getElementById('syllableAvg').innerText = `Avg Syllables/Line: ~${avg}`;
+        }
+
+        // Export Menu Toggle & Exporter
+        function toggleExportMenu() {
+            const menu = document.getElementById('exportMenu');
+            menu.classList.toggle('hidden');
+        }
+
+        function exportLyrics(format) {
+            const text = document.getElementById('lyricEditor').value;
+            if (!text) return alert("No content to export.");
+
+            let content = text;
+            let filename = `lyrics_${Date.now()}.${format}`;
+            let mime = 'text/plain';
+
+            if (format === 'json') {
+                content = JSON.stringify({ lyrics: text, exportedAt: new Date().toISOString() }, null, 2);
+                mime = 'application/json';
+            } else if (format === 'lrc') {
+                const lines = text.split('\n');
+                let sec = 0;
+                content = lines.map(line => {
+                    if (!line.trim()) return '';
+                    const m = String(Math.floor(sec / 60)).padStart(2, '0');
+                    const s = String(sec % 60).padStart(2, '0');
+                    sec += 4;
+                    return `[${m}:${s}.00] ${line}`;
+                }).join('\n');
+            }
+
+            const blob = new Blob([content], { type: mime });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            document.getElementById('exportMenu').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
